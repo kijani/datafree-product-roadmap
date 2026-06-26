@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}{% if is_editor %}Edit{% else %}View{% endif %}{% else %}New item{% endif %}{% endblock %}
+
+{% block content %}
+{# Origin tracking: when this page is opened from another page (Board, Archive,
+   Coverage, etc.) the link passes ?from=<original-path> so Cancel and Save can
+   return there. Defaults to the Board if missing. #}
+{% set from_url = request.args.get('from', url_for('kanban')) %}
+
+{# Viewer mode: inputs are disabled, action buttons hidden. The single
+   variable `ro` toggles every editable field at once and keeps the
+   template readable. #}
+{% set ro = not is_editor %}
+
+<div class="form-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">
+        {% if item %}
+          {% if is_editor %}Edit item{% else %}Item details{% endif %}
+        {% else %}New item{% endif %}
+      </h1>
+      {% if item %}
+        <p class="page-subtitle">
+          Created {{ item.created_at[:10] }} · last updated {{ item.updated_at[:10] }} ·
+          <a href="{{ url_for('item_history', item_id=item.id) }}?from={{ from_url }}">history</a>
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" class="form-card {% if ro %}form-readonly{% endif %}">
+    {# Preserve origin across the POST so the server can redirect back to it. #}
+    <input type="hidden" name="from" value="{{ from_url }}">
+    <div class="field">
+      <label class="field-label">Title</label>
+      <input type="text" name="title" class="text-input"
+             value="{{ item.title if item else '' }}" required
+             {% if not ro %}autofocus{% endif %}
+             {% if ro %}readonly{% endif %}>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Bucket</label>
+        <select name="bucket" id="bucket-select" class="select-input" required
+                {% if ro %}disabled{% endif %}>
+          {% for b in ALL_BUCKETS %}
+            <option value="{{ b }}" {% if item and item.bucket == b %}selected{% elif not item and b == 'Now' %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Theme</label>
+        <select name="theme_id" class="select-input" {% if ro %}disabled{% endif %}>
+          <option value="">— None —</option>
+          {% for t in themes %}
+            <option value="{{ t.id }}" {% if item and item.theme_id == t.id %}selected{% endif %}>
+              {{ t.code }} · {{ t.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Effort</label>
+      <div class="scale-picker">
+        {% for n in [1, 2, 3, 4, 5] %}
+          <input type="radio" name="effort" value="{{ n }}" id="effort{{ n }}"
+                 {% if item and item.effort == n %}checked{% endif %}
+                 {% if ro %}disabled{% endif %}>
+          <label for="effort{{ n }}">{{ n }}</label>
+        {% endfor %}
+      </div>
+      <div class="field-hint">
+        1 = under 2 weeks · 2 = ~1 month · 3 = one quarter · 4 = multi-quarter team · 5 = cross-team architectural
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Value</label>
+      <div class="scale-picker">
+        {% for n in [1, 2, 3, 4, 5] %}
+          <input type="radio" name="value" value="{{ n }}" id="value{{ n }}"
+                 {% if item and item.value == n %}checked{% endif %}
+                 {% if ro %}disabled{% endif %}>
+          <label for="value{{ n }}">{{ n }}</label>
+        {% endfor %}
+      </div>
+      <div class="field-hint">
+        1 = nice-to-have · 2 = operational win · 3 = segment impact · 4 = unlocks major customer/market · 5 = strategic must-have
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Product / Tool tags</label>
+      <div class="product-grid">
+        {% for p in products %}
+          <input type="checkbox" name="product_ids" value="{{ p.id }}" id="prod{{ p.id }}"
+                 {% if item and p.id in item.product_ids %}checked{% endif %}
+                 {% if ro %}disabled{% endif %}>
+          <label for="prod{{ p.id }}">{{ p.name }}</label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Strategic rationale</label>
+      <textarea name="rationale" class="textarea-input" rows="3"
+                placeholder="One sentence: why this, why now, which theme it serves."
+                {% if ro %}readonly{% endif %}>{{ item.rationale if item else '' }}</textarea>
+    </div>
+
+    {# Completed date — only relevant when bucket is "Recently Done". Hidden by
+       default, shown/hidden by JS as the bucket select changes. The field is
+       wrapped in a div with id so JS can toggle its display without recreating
+       the input (which would lose any value the user typed). #}
+    <div class="field" id="completed-date-field"
+         {% if not (item and item.bucket == 'Recently Done') %}style="display: none;"{% endif %}>
+      <label class="field-label" for="completed_at_input">Completed date</label>
+      <input type="date" name="completed_at" id="completed_at_input" class="text-input"
+             value="{{ item.completed_at[:10] if item and item.completed_at else '' }}"
+             style="max-width: 220px;"
+             {% if ro %}readonly{% endif %}>
+      {% if not ro %}
+        <div class="field-hint">
+          Set automatically when this item entered <em>Recently Done</em>.
+          Edit to correct the date if you marked it done after the fact.
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      {% if is_editor %}
+        <div>
+          {% if item %}
+            {# Uses formaction to submit to the delete URL instead of the parent form's action.
+               Nested <form> tags are invalid HTML — the browser ignores them — so this is the
+               right way to have a delete button live inside an edit form. #}
+            <button type="submit"
+                    formaction="{{ url_for('item_delete', item_id=item.id) }}"
+                    formnovalidate
+                    class="btn btn-danger"
+                    onclick="return confirm('Delete this item permanently?');">
+              Delete
+            </button>
+          {% endif %}
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <a href="{{ from_url }}" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn btn-primary">
+            {% if item %}Save changes{% else %}Create item{% endif %}
+          </button>
+        </div>
+      {% else %}
+        {# Viewer: no save/delete. Just a Back button (visually positioned right) and
+           a small hint that signing in unlocks editing. #}
+        <div class="form-viewer-hint">
+          Sign in as editor to make changes.
+        </div>
+        <div>
+          <a href="{{ from_url }}" class="btn btn-ghost">← Back</a>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+{% if not ro %}
+<script>
+(function () {
+  // Show/hide the Completed date field based on the bucket selection.
+  // The field starts in its server-rendered state (visible iff the item is
+  // already in Recently Done). When the bucket changes interactively, we
+  // mirror that here so the form matches the user's intent before save.
+  //
+  // Also: when bucket changes TO Recently Done and the date field is empty,
+  // pre-fill it with today's date. This makes the eventual saved value
+  // visible to the user before they click Save (server would auto-stamp
+  // today either way, but seeing the value beforehand is clearer).
+  //
+  // Script only loaded for editors — viewers can't change the bucket so
+  // no toggle logic is needed.
+  const bucketSelect = document.getElementById('bucket-select');
+  const completedField = document.getElementById('completed-date-field');
+  const dateInput = document.getElementById('completed_at_input');
+  if (!bucketSelect || !completedField || !dateInput) return;
+
+  function todayAsISO() {
+    // Local-date YYYY-MM-DD. Using toISOString() would give UTC, which can
+    // be off by a day for users east/west of GMT near midnight.
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function syncCompletedFieldVisibility() {
+    const isRecentlyDone = bucketSelect.value === 'Recently Done';
+    completedField.style.display = isRecentlyDone ? '' : 'none';
+    if (isRecentlyDone && !dateInput.value) {
+      dateInput.value = todayAsISO();
+    }
+  }
+
+  bucketSelect.addEventListener('change', syncCompletedFieldVisibility);
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Investigations{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Investigations &amp; Hunches</h1>
+    <p class="page-subtitle">Pre-roadmap exploration. Not yet committed work.</p>
+  </div>
+  <div class="page-stat">
+    Items
+    <strong>{{ (columns['Investigation']|length) + (columns['Hunch']|length) }}</strong>
+  </div>
+</div>
+
+<section class="explore-section">
+  <header class="explore-section-head">
+    <h2 class="explore-section-title">Investigations</h2>
+    <span class="explore-section-count">{{ columns['Investigation']|length }} {% if columns['Investigation']|length == 1 %}item{% else %}items{% endif %}</span>
+  </header>
+  <p class="explore-section-blurb">
+    Time-boxed work to determine whether something should become a roadmap candidate.
+    Investigations have a shape but the value-or-feasibility is genuinely uncertain.
+    Output is a recommendation, not a built feature.
+  </p>
+
+  {% if columns['Investigation'] %}
+    <div class="explore-list">
+      {% for item in columns['Investigation'] %}
+        <article class="explore-item">
+          <div class="explore-item-head">
+            {% if item.theme_code %}
+              <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+            {% endif %}
+            <h3 class="explore-item-title">
+              <a href="{{ edit_url(item.id) }}">{{ item.title }}</a>
+            </h3>
+          </div>
+          {% if item.rationale %}
+            <p class="explore-item-body">{{ item.rationale }}</p>
+          {% endif %}
+          {% if item.products %}
+            <div class="explore-item-meta">
+              {% for p in item.products.split(', ') %}
+                <span class="chip-product">{{ p }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="explore-empty">Nothing under investigation right now.</div>
+  {% endif %}
+</section>
+
+<section class="explore-section">
+  <header class="explore-section-head">
+    <h2 class="explore-section-title">Hunches</h2>
+    <span class="explore-section-count">{{ columns['Hunch']|length }} {% if columns['Hunch']|length == 1 %}item{% else %}items{% endif %}</span>
+  </header>
+  <p class="explore-section-blurb">
+    Pre-investigation ideas. Something might be here, but the problem statement
+    isn't clear enough yet to shape an investigation around it. Hunches either
+    sharpen into investigations, fold into existing roadmap items, or fade.
+  </p>
+
+  {% if columns['Hunch'] %}
+    <div class="explore-list">
+      {% for item in columns['Hunch'] %}
+        <article class="explore-item">
+          <div class="explore-item-head">
+            {% if item.theme_code %}
+              <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+            {% endif %}
+            <h3 class="explore-item-title">
+              <a href="{{ edit_url(item.id) }}">{{ item.title }}</a>
+            </h3>
+          </div>
+          {% if item.rationale %}
+            <p class="explore-item-body">{{ item.rationale }}</p>
+          {% endif %}
+          {% if item.products %}
+            <div class="explore-item-meta">
+              {% for p in item.products.split(', ') %}
+                <span class="chip-product">{{ p }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="explore-empty">No hunches recorded.</div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Themes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Themes</h1>
+    <p class="page-subtitle">Strategic priorities. Revisit quarterly.</p>
+  </div>
+  <div class="page-stat">
+    Count
+    <strong>{{ themes|length }}</strong>
+  </div>
+</div>
+
+<div class="theme-cards">
+  {% for theme in themes %}
+    <article class="theme-card" data-theme-card="{{ theme.id }}">
+      <div class="theme-card-rank">{{ theme.priority }}</div>
+      <div class="theme-card-body">
+        <div class="theme-card-head">
+          <span class="chip-theme {{ THEME_COLORS.get(theme.code, '') }}">{{ theme.code }}</span>
+          <h3 class="theme-card-name">{{ theme.name }}</h3>
+        </div>
+        {% if theme.description %}
+          <p class="theme-card-desc">{{ theme.description }}</p>
+        {% else %}
+          <p class="theme-card-desc theme-card-desc-empty">No description.</p>
+        {% endif %}
+      </div>
+      <div class="theme-card-actions">
+        <button type="button" class="btn btn-sm" data-edit-theme="{{ theme.id }}">Edit</button>
+      </div>
+
+      {# Hidden form per theme — populated by the modal when Edit is clicked.
+         Single shared modal pulls data from these. Saves go via standard POST. #}
+      <script type="application/json" data-theme-data="{{ theme.id }}">
+        {
+          "id": {{ theme.id }},
+          "code": {{ theme.code|tojson }},
+          "name": {{ theme.name|tojson }},
+          "priority": {{ theme.priority }},
+          "description": {{ theme.description|tojson }}
+        }
+      </script>
+    </article>
+  {% endfor %}
+</div>
+
+<section class="theme-form-block">
+  <h3>Add a new theme</h3>
+  <form method="post">
+    <input type="hidden" name="action" value="create">
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Code</label>
+        <input type="text" name="code" class="text-input" placeholder="e.g. SEC" maxlength="10" required>
+        <div class="field-hint">Short uppercase code, max 10 characters.</div>
+      </div>
+      <div class="field">
+        <label class="field-label">Priority</label>
+        <input type="number" name="priority" class="text-input" value="{{ themes|length + 1 }}" min="1" max="99" required>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Name</label>
+      <input type="text" name="name" class="text-input" placeholder="e.g. Security & Compliance" required>
+    </div>
+    <div class="field">
+      <label class="field-label">Description</label>
+      <textarea name="description" class="textarea-input" rows="2"
+                placeholder="Briefly describe what this theme covers."></textarea>
+    </div>
+    <div style="text-align: right;">
+      <button type="submit" class="btn btn-primary">Add theme</button>
+    </div>
+  </form>
+</section>
+
+{# ====== Edit Modal ====== #}
+<dialog id="editThemeModal" class="modal">
+  <form method="post" class="modal-form" id="editThemeForm">
+    <input type="hidden" name="action" value="update">
+    <input type="hidden" name="id" id="editThemeId">
+
+    <header class="modal-head">
+      <h2 class="modal-title">Edit theme</h2>
+      <button type="button" class="modal-close" aria-label="Close" data-close-modal>×</button>
+    </header>
+
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="editThemeCode">Code</label>
+          <input type="text" name="code" id="editThemeCode" class="text-input" maxlength="10" required>
+          <div class="field-hint">Short uppercase code, max 10 characters.</div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="editThemePriority">Priority</label>
+          <input type="number" name="priority" id="editThemePriority" class="text-input" min="1" max="99" required>
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label" for="editThemeName">Name</label>
+        <input type="text" name="name" id="editThemeName" class="text-input" required>
+      </div>
+      <div class="field">
+        <label class="field-label" for="editThemeDesc">Description</label>
+        <textarea name="description" id="editThemeDesc" class="textarea-input" rows="3"></textarea>
+      </div>
+    </div>
+
+    <footer class="modal-foot">
+      <button type="button" class="btn btn-danger" id="deleteThemeBtn">Delete theme</button>
+      <div class="modal-foot-right">
+        <button type="button" class="btn btn-ghost" data-close-modal>Cancel</button>
+        <button type="submit" class="btn btn-primary">Save changes</button>
+      </div>
+    </footer>
+  </form>
+</dialog>
+
+{# Hidden delete form — submitted by Delete button in the modal. #}
+<form method="post" id="deleteThemeForm" style="display:none;">
+  <input type="hidden" name="action" value="delete">
+  <input type="hidden" name="id" id="deleteThemeIdField">
+</form>
+
+<script>
+(function () {
+  const modal     = document.getElementById('editThemeModal');
+  const form      = document.getElementById('editThemeForm');
+  const idField   = document.getElementById('editThemeId');
+  const codeField = document.getElementById('editThemeCode');
+  const nameField = document.getElementById('editThemeName');
+  const priField  = document.getElementById('editThemePriority');
+  const descField = document.getElementById('editThemeDesc');
+
+  const deleteBtn      = document.getElementById('deleteThemeBtn');
+  const deleteForm     = document.getElementById('deleteThemeForm');
+  const deleteIdField  = document.getElementById('deleteThemeIdField');
+
+  function openWith(theme) {
+    idField.value   = theme.id;
+    codeField.value = theme.code;
+    nameField.value = theme.name;
+    priField.value  = theme.priority;
+    descField.value = theme.description || '';
+    modal.showModal();
+    // Pick a sensible first focus that isn't the close button
+    setTimeout(() => nameField.focus(), 50);
+  }
+
+  function close() {
+    if (modal.open) modal.close();
+  }
+
+  // Wire up "Edit" buttons
+  document.querySelectorAll('[data-edit-theme]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.editTheme;
+      const dataEl = document.querySelector(`[data-theme-data="${id}"]`);
+      if (!dataEl) return;
+      const theme = JSON.parse(dataEl.textContent);
+      openWith(theme);
+    });
+  });
+
+  // Close on backdrop click and on any [data-close-modal] click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+  modal.querySelectorAll('[data-close-modal]').forEach(b => {
+    b.addEventListener('click', close);
+  });
+
+  // Delete: confirm, then submit the hidden delete form
+  deleteBtn.addEventListener('click', () => {
+    const id = idField.value;
+    if (!confirm('Delete this theme? Items tagged with it will become untagged.')) return;
+    deleteIdField.value = id;
+    deleteForm.submit();
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}Archive{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Archive</h1>
+    <p class="page-subtitle">Backlog and completed work — kept out of the strategic view.</p>
+  </div>
+  <div class="page-stat">
+    Items
+    <strong>{{ (columns['Backlog']|length) + (columns['Recently Done']|length) }}</strong>
+  </div>
+</div>
+
+{# Toast for save confirmation, reused from the Board pattern. #}
+<div id="reorderToast" class="reorder-toast" role="status" aria-live="polite"></div>
+
+{# Backlog on top: consulted more often when picking what to pull into Now. #}
+<details class="archive-disclosure" open>
+  <summary class="archive-disclosure-summary">
+    <div class="archive-disclosure-text">
+      <h2>Backlog</h2>
+      <span class="archive-disclosure-count">{{ columns['Backlog']|length }} {% if columns['Backlog']|length == 1 %}item{% else %}items{% endif %}</span>
+    </div>
+    <span class="archive-disclosure-chevron" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 16 16">
+        <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+  </summary>
+
+  {% if is_editor %}
+    <p class="archive-section-blurb">Drag rows to reorder. Sequence here informs prioritisation when pulling into Now.</p>
+  {% endif %}
+
+  <div class="archive-disclosure-body">
+    {% if columns['Backlog'] %}
+      <table class="data-table {% if is_editor %}data-table-sortable{% endif %}">
+        <thead>
+          <tr>
+            {% if is_editor %}<th class="col-drag" aria-hidden="true"></th>{% endif %}
+            <th>Item</th>
+            <th>Theme</th>
+            <th>Products</th>
+            <th style="text-align:center;">E</th>
+            <th style="text-align:center;">V</th>
+          </tr>
+        </thead>
+        {# data-bucket on tbody mirrors the Board pattern; the persist payload
+           reads it to know which bucket each row belongs to. #}
+        <tbody id="backlog-tbody" data-bucket="Backlog">
+          {% for item in columns['Backlog'] %}
+            <tr data-item-id="{{ item.id }}">
+              {% if is_editor %}
+                <td class="cell-drag">
+                  <span class="drag-handle" aria-label="Drag to reorder" title="Drag to reorder">
+                    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                      <circle cx="4" cy="3" r="1.3"/><circle cx="10" cy="3" r="1.3"/>
+                      <circle cx="4" cy="7" r="1.3"/><circle cx="10" cy="7" r="1.3"/>
+                      <circle cx="4" cy="11" r="1.3"/><circle cx="10" cy="11" r="1.3"/>
+                    </svg>
+                  </span>
+                </td>
+              {% endif %}
+              <td class="cell-title">
+                <a href="{{ edit_url(item.id) }}">{{ item.title }}</a>
+              </td>
+              <td>
+                {% if item.theme_code %}
+                  <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+                {% else %}
+                  <span class="text-faint">—</span>
+                {% endif %}
+              </td>
+              <td class="text-muted" style="font-size: 13px;">{{ item.products or '—' }}</td>
+              <td class="cell-num">{{ item.effort or '' }}</td>
+              <td class="cell-num">{{ item.value or '' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="archive-section-empty">Nothing in the backlog yet.</div>
+    {% endif %}
+  </div>
+</details>
+
+{# Recently Done below: useful for "what did we ship recently", consulted less often. #}
+<details class="archive-disclosure" open style="margin-top: 32px;">
+  <summary class="archive-disclosure-summary">
+    <div class="archive-disclosure-text">
+      <h2>Recently Done</h2>
+      <span class="archive-disclosure-count">{{ columns['Recently Done']|length }} {% if columns['Recently Done']|length == 1 %}item{% else %}items{% endif %}</span>
+    </div>
+    <span class="archive-disclosure-chevron" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 16 16">
+        <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+  </summary>
+
+  <p class="archive-section-blurb">Items move to the Bin after 60 days, then are permanently deleted 30 days later.</p>
+
+  <div class="archive-disclosure-body">
+    {% if columns['Recently Done'] %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Theme</th>
+            <th>Products</th>
+            <th>Completed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in columns['Recently Done'] %}
+            <tr>
+              <td class="cell-title">
+                <a href="{{ edit_url(item.id) }}">{{ item.title }}</a>
+              </td>
+              <td>
+                {% if item.theme_code %}
+                  <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+                {% else %}
+                  <span class="text-faint">—</span>
+                {% endif %}
+              </td>
+              <td class="text-muted" style="font-size: 13px;">{{ item.products or '—' }}</td>
+              <td class="text-muted" style="font-size: 13px;">
+                {% if item.days_done is not none %}
+                  {% if item.days_done == 0 %}
+                    today
+                  {% elif item.days_done == 1 %}
+                    yesterday
+                  {% else %}
+                    {{ item.days_done }} days ago
+                  {% endif %}
+                {% else %}
+                  <span class="text-faint">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="archive-section-empty">Nothing completed yet.</div>
+    {% endif %}
+  </div>
+</details>
+
+{% if columns['Backlog'] and is_editor %}
+<script src="{{ url_for('static', filename='sortable.min.js') }}"></script>
+<script>
+(function () {
+  // Drag-and-drop reorder for the Backlog. Mirrors the Board's pattern:
+  // SortableJS on the tbody, persist via /items/reorder with full payload.
+  // Single-bucket (no cross-bucket drops) so this is simpler than the Board's
+  // multi-zone setup.
+  const tbody = document.getElementById('backlog-tbody');
+  if (!tbody) return;
+
+  const toast = document.getElementById('reorderToast');
+  let toastTimer;
+  function showToast(message, isError) {
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.toggle('is-error', !!isError);
+    toast.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2200);
+  }
+
+  function persistOrder() {
+    // Send only the Backlog rows. Server merges this with the rest of the
+    // table — items in other buckets aren't in the payload, so they stay put.
+    const updates = [];
+    tbody.querySelectorAll('tr[data-item-id]').forEach((row, idx) => {
+      updates.push({
+        id: parseInt(row.dataset.itemId, 10),
+        bucket: 'Backlog',
+        position: idx
+      });
+    });
+
+    fetch('/items/reorder', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({order: updates})
+    })
+    .then(r => {
+      if (!r.ok) {
+        r.json().catch(() => ({})).then(err => {
+          showToast('Save failed: ' + (err.error || r.statusText), true);
+        });
+      } else {
+        showToast('Order saved');
+      }
+    })
+    .catch(e => showToast('Save failed: ' + e.message, true));
+  }
+
+  new Sortable(tbody, {
+    handle: '.drag-handle',
+    animation: 160,
+    ghostClass: 'row-ghost',
+    chosenClass: 'row-chosen',
+    dragClass: 'row-dragging',
+    // Same auto-scroll config as the Board — makes long lists usable.
+    scroll: true,
+    scrollSensitivity: 80,
+    scrollSpeed: 12,
+    bubbleScroll: true,
+    forceAutoScrollFallback: true,
+    onEnd: persistOrder
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

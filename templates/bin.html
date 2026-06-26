@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Bin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Bin</h1>
+    <p class="page-subtitle">Deleted items are kept here for 30 days, then permanently removed.</p>
+  </div>
+  <div class="page-stat">
+    Items
+    <strong>{{ deleted_items|length }}</strong>
+  </div>
+</div>
+
+{% if deleted_items %}
+  <ul class="bin-list">
+    {% for item in deleted_items %}
+      <li class="bin-item">
+        <div class="bin-item-info">
+          <div class="bin-item-title">{{ item.title }}</div>
+          <div class="bin-item-meta">
+            <span>Originally in <strong>{{ item.bucket }}</strong></span>
+            <span>·</span>
+            <span>deleted {{ item.deleted_at[:10] }}</span>
+            {% if item.theme_code %}
+              <span>·</span>
+              <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="bin-countdown {% if item.days_remaining <= 7 %}is-warning{% endif %}">
+          {% if item.days_remaining == 0 %}
+            purges today
+          {% elif item.days_remaining == 1 %}
+            1 day left
+          {% else %}
+            {{ item.days_remaining }} days left
+          {% endif %}
+        </div>
+        {% if is_editor %}
+          <div class="bin-actions">
+            <form method="post" action="{{ url_for('item_restore', item_id=item.id) }}" class="inline-form">
+              <button type="submit" class="btn btn-sm">Restore</button>
+            </form>
+            <form method="post" action="{{ url_for('item_purge', item_id=item.id) }}" class="inline-form"
+                  onsubmit="return confirm('Permanently delete this item? This cannot be undone.');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete permanently</button>
+            </form>
+          </div>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="bin-empty">
+    The Bin is empty. Deleted items appear here for 30 days and can be restored.
+  </div>
+{% endif %}
+{% endblock %}

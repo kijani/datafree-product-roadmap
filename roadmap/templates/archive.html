@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Archive{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Archive</h1>
+    <p class="page-subtitle">Backlog and completed work — kept out of the strategic view.</p>
+  </div>
+</div>
+
+{% for bucket in ARCHIVE_BUCKETS %}
+  <section style="margin-bottom: 40px;">
+    <h2 style="font-family: var(--font-display); font-weight: 700; font-size: 26px; letter-spacing: -0.02em; margin: 0 0 6px; color: var(--ink);">
+      {{ bucket }}
+    </h2>
+    <p class="text-faint" style="font-size: 13px; margin: 0 0 16px;">
+      {{ columns[bucket]|length }} {% if columns[bucket]|length == 1 %}item{% else %}items{% endif %}
+    </p>
+
+    {% if columns[bucket] %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Theme</th>
+            <th>Products</th>
+            <th style="text-align:center;">E</th>
+            <th style="text-align:center;">V</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in columns[bucket] %}
+            <tr>
+              <td class="cell-title">
+                <a href="{{ url_for('item_edit', item_id=item.id) }}">{{ item.title }}</a>
+              </td>
+              <td>
+                {% if item.theme_code %}
+                  <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+                {% else %}
+                  <span class="text-faint">—</span>
+                {% endif %}
+              </td>
+              <td class="text-muted" style="font-size: 13px;">{{ item.products or '—' }}</td>
+              <td class="cell-num">{{ item.effort or '' }}</td>
+              <td class="cell-num">{{ item.value or '' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state" style="padding: 40px;">
+        <em>Nothing here yet.</em>
+      </div>
+    {% endif %}
+  </section>
+{% endfor %}
+
+<section class="deleted-section">
+  <details class="deleted-disclosure" {% if deleted_items %}open{% endif %}>
+    <summary class="deleted-summary">
+      <div class="deleted-summary-text">
+        <h3>Recently deleted</h3>
+        <span class="deleted-count">{{ deleted_items|length }} {% if deleted_items|length == 1 %}item{% else %}items{% endif %}</span>
+        <span class="deleted-meta">Auto-purged after 30 days</span>
+      </div>
+      <span class="deleted-chevron" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 16 16">
+          <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+    </summary>
+
+    {% if deleted_items %}
+      <ul class="deleted-list">
+        {% for item in deleted_items %}
+          <li class="deleted-item">
+            <div class="deleted-item-info">
+              <div class="deleted-item-title">{{ item.title }}</div>
+              <div class="deleted-item-meta">
+                <span>Originally in <strong>{{ item.bucket }}</strong></span>
+                <span>·</span>
+                <span>deleted {{ item.deleted_at[:10] }}</span>
+                {% if item.theme_code %}
+                  <span>·</span>
+                  <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="deleted-countdown {% if item.days_remaining <= 7 %}is-warning{% endif %}">
+              {% if item.days_remaining == 0 %}
+                purges today
+              {% elif item.days_remaining == 1 %}
+                1 day left
+              {% else %}
+                {{ item.days_remaining }} days left
+              {% endif %}
+            </div>
+            <div class="deleted-actions">
+              <form method="post" action="{{ url_for('item_restore', item_id=item.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-sm">Restore</button>
+              </form>
+              <form method="post" action="{{ url_for('item_purge', item_id=item.id) }}" class="inline-form"
+                    onsubmit="return confirm('Permanently delete this item? This cannot be undone.');">
+                <button type="submit" class="btn btn-sm btn-danger">Delete permanently</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="deleted-empty">
+        Nothing has been deleted recently. Deleted items appear here for 30 days and can be restored.
+      </div>
+    {% endif %}
+  </details>
+</section>
+{% endblock %}

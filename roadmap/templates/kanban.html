@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Board{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">The Board</h1>
+    <p class="page-subtitle">Drag the handle to reorder. Drag between columns to change bucket.</p>
+  </div>
+  <div class="page-stat">
+    Total active
+    <strong>{{ columns['Now']|length + columns['Next']|length + columns['Later']|length }}</strong>
+  </div>
+</div>
+
+<div class="kanban">
+  {% for bucket in BUCKET_ORDER %}
+    <section class="column column-{{ bucket|lower }}">
+      <header class="column-head">
+        <h2 class="column-title">{{ bucket }}</h2>
+        <span class="column-count" data-bucket-count="{{ bucket }}">
+          {{ columns[bucket]|length }} {% if columns[bucket]|length == 1 %}item{% else %}items{% endif %}
+        </span>
+      </header>
+
+      <div class="card-stack drop-zone" data-bucket="{{ bucket }}">
+        {% for item in columns[bucket] %}
+          <div class="card" data-item-id="{{ item.id }}">
+            <span class="drag-handle" aria-label="Drag to reorder" title="Drag to reorder">
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                <circle cx="4" cy="3" r="1.3"/><circle cx="10" cy="3" r="1.3"/>
+                <circle cx="4" cy="7" r="1.3"/><circle cx="10" cy="7" r="1.3"/>
+                <circle cx="4" cy="11" r="1.3"/><circle cx="10" cy="11" r="1.3"/>
+              </svg>
+            </span>
+            <a href="{{ url_for('item_edit', item_id=item.id) }}" class="card-body">
+              <h3 class="card-title">{{ item.title }}</h3>
+              <div class="card-meta">
+                {% if item.theme_code %}
+                  <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+                {% endif %}
+                {% if item.products %}
+                  {% for p in item.products.split(', ') %}
+                    <span class="chip-product">{{ p }}</span>
+                  {% endfor %}
+                {% endif %}
+                <span class="chip-score">
+                  {% if item.effort %}<span class="ev">E{{ item.effort }}</span>{% endif %}
+                  {% if item.value %}<span class="ev">V{{ item.value }}</span>{% endif %}
+                  {% set s = priority_score(item) %}
+                  {% if s is not none %}
+                    <strong>{% if s > 0 %}+{% endif %}{{ s }}</strong>
+                  {% endif %}
+                </span>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endfor %}
+</div>
+
+<section class="board-legend" aria-label="Theme legend and counts">
+  <div class="board-legend-head">Themes — active items</div>
+  <div class="board-legend-row">
+    {% for theme in themes %}
+      {% set count = theme_counts.get(theme.code, 0) %}
+      <span class="legend-pill" title="{{ theme.name }}">
+        <span class="chip-theme {{ THEME_COLORS.get(theme.code, '') }}">{{ theme.code }}</span>
+        <span class="legend-pill-name">{{ theme.name }}</span>
+        <span class="legend-pill-count {% if count == 0 %}is-zero{% endif %}">{{ count }}</span>
+      </span>
+    {% endfor %}
+  </div>
+</section>
+
+<div id="reorder-toast" class="reorder-toast" aria-live="polite"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='sortable.min.js') }}"></script>
+<script>
+(function () {
+  const zones = document.querySelectorAll('.drop-zone');
+  const toast = document.getElementById('reorder-toast');
+  let toastTimer = null;
+
+  function showToast(message, isError) {
+    toast.textContent = message;
+    toast.classList.toggle('is-error', !!isError);
+    toast.classList.add('is-visible');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 2200);
+  }
+
+  function gatherOrder() {
+    // Build the full order payload from current DOM state.
+    // We send all items in all visible buckets — backend just updates whatever it receives.
+    const updates = [];
+    zones.forEach(zone => {
+      const bucket = zone.dataset.bucket;
+      zone.querySelectorAll('.card').forEach((card, idx) => {
+        updates.push({
+          id: parseInt(card.dataset.itemId, 10),
+          bucket: bucket,
+          position: idx
+        });
+      });
+    });
+    return updates;
+  }
+
+  function updateCounts() {
+    zones.forEach(zone => {
+      const bucket = zone.dataset.bucket;
+      const count = zone.querySelectorAll('.card').length;
+      const label = document.querySelector(`[data-bucket-count="${bucket}"]`);
+      if (label) {
+        label.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+      }
+    });
+  }
+
+  async function persistOrder() {
+    const order = gatherOrder();
+    try {
+      const r = await fetch('/items/reorder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({order: order})
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        showToast('Save failed: ' + (err.error || r.statusText), true);
+      } else {
+        showToast('Order saved');
+      }
+    } catch (e) {
+      showToast('Save failed: ' + e.message, true);
+    }
+  }
+
+  zones.forEach(zone => {
+    new Sortable(zone, {
+      group: 'roadmap',
+      handle: '.drag-handle',
+      animation: 160,
+      ghostClass: 'card-ghost',
+      chosenClass: 'card-chosen',
+      dragClass: 'card-dragging',
+      onEnd: function () {
+        updateCounts();
+        persistOrder();
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}Edit{% else %}New item{% endif %}{% endblock %}
+
+{% block content %}
+<div class="form-page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{% if item %}Edit item{% else %}New item{% endif %}</h1>
+      {% if item %}
+        <p class="page-subtitle">
+          Created {{ item.created_at[:10] }} · last updated {{ item.updated_at[:10] }} ·
+          <a href="{{ url_for('item_history', item_id=item.id) }}">history</a>
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" class="form-card">
+    <div class="field">
+      <label class="field-label">Title</label>
+      <input type="text" name="title" class="text-input"
+             value="{{ item.title if item else '' }}" required autofocus>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label class="field-label">Bucket</label>
+        <select name="bucket" class="select-input" required>
+          {% for b in ALL_BUCKETS %}
+            <option value="{{ b }}" {% if item and item.bucket == b %}selected{% elif not item and b == 'Now' %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Theme</label>
+        <select name="theme_id" class="select-input">
+          <option value="">— None —</option>
+          {% for t in themes %}
+            <option value="{{ t.id }}" {% if item and item.theme_id == t.id %}selected{% endif %}>
+              {{ t.code }} · {{ t.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Effort</label>
+      <div class="scale-picker">
+        {% for n in [1, 2, 3, 4, 5] %}
+          <input type="radio" name="effort" value="{{ n }}" id="effort{{ n }}"
+                 {% if item and item.effort == n %}checked{% endif %}>
+          <label for="effort{{ n }}">{{ n }}</label>
+        {% endfor %}
+      </div>
+      <div class="field-hint">
+        1 = under 2 weeks · 2 = ~1 month · 3 = one quarter · 4 = multi-quarter team · 5 = cross-team architectural
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Value</label>
+      <div class="scale-picker">
+        {% for n in [1, 2, 3, 4, 5] %}
+          <input type="radio" name="value" value="{{ n }}" id="value{{ n }}"
+                 {% if item and item.value == n %}checked{% endif %}>
+          <label for="value{{ n }}">{{ n }}</label>
+        {% endfor %}
+      </div>
+      <div class="field-hint">
+        1 = nice-to-have · 2 = operational win · 3 = segment impact · 4 = unlocks major customer/market · 5 = strategic must-have
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Product / Tool tags</label>
+      <div class="product-grid">
+        {% for p in products %}
+          <input type="checkbox" name="product_ids" value="{{ p.id }}" id="prod{{ p.id }}"
+                 {% if item and p.id in item.product_ids %}checked{% endif %}>
+          <label for="prod{{ p.id }}">{{ p.name }}</label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="field-label">Strategic rationale</label>
+      <textarea name="rationale" class="textarea-input" rows="3"
+                placeholder="One sentence: why this, why now, which theme it serves.">{{ item.rationale if item else '' }}</textarea>
+    </div>
+
+    <div class="form-actions">
+      <div>
+        {% if item %}
+          {# Uses formaction to submit to the delete URL instead of the parent form's action.
+             Nested <form> tags are invalid HTML — the browser ignores them — so this is the
+             right way to have a delete button live inside an edit form. #}
+          <button type="submit"
+                  formaction="{{ url_for('item_delete', item_id=item.id) }}"
+                  formnovalidate
+                  class="btn btn-danger"
+                  onclick="return confirm('Delete this item permanently?');">
+            Delete
+          </button>
+        {% endif %}
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <a href="{{ url_for('kanban') }}" class="btn btn-ghost">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+          {% if item %}Save changes{% else %}Create item{% endif %}
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

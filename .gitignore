@@ -1,0 +1,11 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+roadmap.db
+.DS_Store
+.env
+
+# Local secrets — never commit. Copy from secrets_local.py.example.
+secrets_local.py
+secrets.py

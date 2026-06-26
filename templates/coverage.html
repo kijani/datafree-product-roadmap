@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Coverage{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Theme Coverage</h1>
+    <p class="page-subtitle">Is the work balanced against stated priorities?</p>
+  </div>
+  <div class="page-stat">
+    Items
+    <strong>{{ total_items }}</strong>
+  </div>
+</div>
+
+<div class="coverage-grid">
+  <div class="coverage-row head">
+    <div>Theme</div>
+    <div>Now</div>
+    <div>Next</div>
+    <div>Later</div>
+    <div style="text-align:center;">Total</div>
+  </div>
+
+  {% for row in grid %}
+    <div class="coverage-row">
+      <div class="coverage-theme-cell">
+        <div class="coverage-priority">{{ row.theme.priority }}</div>
+        <div>
+          <span class="chip-theme {{ THEME_COLORS.get(row.theme.code, '') }}">{{ row.theme.code }}</span>
+          <div class="coverage-theme-name">{{ row.theme.name }}</div>
+        </div>
+      </div>
+      {% for bucket in BUCKET_ORDER %}
+        <div class="coverage-cell">
+          {% for item in row.buckets[bucket] %}
+            <a href="{{ edit_url(item.id) }}" class="coverage-item-tag">
+              {{ item.title }}
+            </a>
+          {% else %}
+            <span class="coverage-empty">—</span>
+          {% endfor %}
+        </div>
+      {% endfor %}
+      <div class="coverage-total">{{ row.total }}</div>
+    </div>
+  {% endfor %}
+</div>
+
+{% if missing %}
+  <div style="margin-top: 32px;">
+    <h3 style="font-family: var(--display); font-weight: 500; font-size: 18px; margin-bottom: 12px;">
+      Items without a theme
+    </h3>
+    <p class="text-muted" style="margin-bottom: 16px; font-size: 13px;">
+      Every roadmap item should map to a theme. These don't — either assign one, or reconsider whether they belong on the roadmap.
+    </p>
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      {% for item in missing %}
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--rule-soft);">
+          <a href="{{ edit_url(item.id) }}">{{ item.title }}</a>
+          <span class="text-faint" style="font-size: 12px;"> · {{ item.bucket }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+{% endblock %}

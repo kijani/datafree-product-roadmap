@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+
+{% block content %}
+{# Pass `from` through history -> edit so the original context is preserved
+   even after a detour through the history page. #}
+{% set back_url = url_for('item_edit', item_id=item.id) + ('?from=' + request.args.get('from') if request.args.get('from') else '') %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">History</h1>
+    <p class="page-subtitle">
+      <a href="{{ back_url }}">{{ item.title }}</a>
+    </p>
+  </div>
+  <a href="{{ back_url }}" class="btn">← Back to item</a>
+</div>
+
+{% if history %}
+  <div class="history-list">
+    {% for h in history %}
+      <div class="history-entry">
+        <div class="history-time">{{ h.changed_at }}</div>
+        <div class="history-field">{{ h.field }}</div>
+        <div class="history-old">
+          <span class="text-faint">from</span> {{ h.old_value if h.old_value else '—' }}
+        </div>
+        <div class="history-new">
+          <span class="history-arrow">→</span> {{ h.new_value if h.new_value else '—' }}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <h2>No history yet</h2>
+    <p>Changes will appear here as the item is edited.</p>
+  </div>
+{% endif %}
+{% endblock %}

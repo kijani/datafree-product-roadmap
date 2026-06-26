@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Roadmap{% endblock %} — Datafree Product Roadmap</title>
+
+{# Apply saved theme BEFORE paint to avoid flash. localStorage preferred,
+   then OS preference, then default light. #}
+<script>
+(function () {
+  try {
+    var stored = localStorage.getItem('roadmap-theme');
+    if (stored === 'light' || stored === 'dark') {
+      document.documentElement.setAttribute('data-theme', stored);
+    }
+    // If nothing stored, CSS @media (prefers-color-scheme) handles the default.
+  } catch (e) { /* localStorage may be disabled — fall through to defaults */ }
+})();
+</script>
+
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='brand/primary_app_style_icon.svg') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block head_extra %}{% endblock %}
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <a href="{{ url_for('kanban') }}" class="brand">
+      <span class="brand-icon">
+        <img src="{{ url_for('static', filename='brand/primary_icon.svg') }}" alt="Datafree">
+      </span>
+      <span class="brand-text">
+        <span class="brand-name">Datafree</span>
+        <span class="brand-sub">Product Roadmap</span>
+      </span>
+    </a>
+    <nav class="primary-nav">
+      <a href="{{ url_for('kanban') }}" class="{% if request.endpoint == 'kanban' %}is-active{% endif %}">Board</a>
+      <a href="{{ url_for('table') }}" class="{% if request.endpoint == 'table' %}is-active{% endif %}">Table</a>
+      <a href="{{ url_for('scatter') }}" class="{% if request.endpoint == 'scatter' %}is-active{% endif %}">2×2</a>
+      <a href="{{ url_for('coverage') }}" class="{% if request.endpoint == 'coverage' %}is-active{% endif %}">Coverage</a>
+      <a href="{{ url_for('investigations') }}" class="{% if request.endpoint == 'investigations' %}is-active{% endif %}">Investigations</a>
+      <a href="{{ url_for('archive') }}" class="{% if request.endpoint == 'archive' %}is-active{% endif %}">Archive</a>
+      {# Themes (admin) moved next to Bin since both are utility/admin surfaces. #}
+      <a href="{{ url_for('themes_admin') }}" class="{% if request.endpoint == 'themes_admin' %}is-active{% endif %}">Themes</a>
+      {# Bin: icon-only to de-emphasise. Title attribute gives a tooltip. #}
+      <a href="{{ url_for('bin_page') }}"
+         class="nav-icon-link {% if request.endpoint == 'bin_page' %}is-active{% endif %}"
+         title="Bin"
+         aria-label="Bin">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14M10 11v6M14 11v6"
+                fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    </nav>
+    <div class="masthead-actions">
+      <button type="button" class="theme-toggle" id="themeToggle"
+              aria-label="Toggle light/dark theme" title="Toggle theme">
+        <svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+        </svg>
+      </button>
+      {% if is_editor %}
+        {# Editor mode: "+ New item" + Editor badge with inline sign-out form.
+           Sign-out is a POST so a tap-to-load doesn't accidentally sign someone
+           out via a stray GET (e.g. prefetch). #}
+        <a href="{{ url_for('item_new') }}?from={{ request.path }}" class="btn btn-primary">+ New item</a>
+        <form method="post" action="{{ url_for('signout') }}" class="auth-status-form">
+          <input type="hidden" name="from" value="{{ request.path }}">
+          <span class="auth-badge" title="You are signed in as editor">Editor</span>
+          <button type="submit" class="auth-link" title="Sign out">Sign out</button>
+        </form>
+      {% else %}
+        {# Viewer mode: just a Sign in link. No "+ New item" button. #}
+        <a href="{{ url_for('signin', next=request.path) }}" class="btn btn-ghost">Sign in</a>
+      {% endif %}
+    </div>
+  </div>
+</header>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}
+    <div class="flash-stack">
+      {% for msg in messages %}<div class="flash">{{ msg }}</div>{% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+<main class="page">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="page-foot">
+  <div class="page-foot-inner">
+    <span class="foot-meta">Datafree Technologies · Strategic roadmap</span>
+    <span class="foot-meta">
+      <a href="{{ url_for('export_csv') }}">CSV</a>
+      ·
+      <a href="{{ url_for('export_markdown') }}">Markdown</a>
+      <span class="foot-version" title="App version">v{{ APP_VERSION }}</span>
+    </span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var html = document.documentElement;
+    var current = html.getAttribute('data-theme');
+    if (!current) {
+      // No explicit override yet — flip from OS-derived current state
+      current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var next = current === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('roadmap-theme', next); } catch (e) {}
+  });
+})();
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

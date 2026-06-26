@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Table{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">All Items</h1>
+    <p class="page-subtitle">Sortable, filterable, exportable.</p>
+  </div>
+  <div class="page-stat">
+    Total
+    <strong>{{ items|length }}</strong>
+  </div>
+</div>
+
+<table class="data-table" id="itemTable">
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Bucket</th>
+      <th>Theme</th>
+      <th>Products</th>
+      <th style="text-align:center;">E</th>
+      <th style="text-align:center;">V</th>
+      <th style="text-align:center;">Score</th>
+      <th>Rationale</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+      <tr>
+        <td class="cell-title">
+          <a href="{{ url_for('item_edit', item_id=item.id) }}">{{ item.title }}</a>
+        </td>
+        <td>
+          <span class="bucket-pill bucket-{{ item.bucket|lower|replace(' ', '-') }}">{{ item.bucket }}</span>
+        </td>
+        <td>
+          {% if item.theme_code %}
+            <span class="chip-theme {{ THEME_COLORS.get(item.theme_code, '') }}">{{ item.theme_code }}</span>
+          {% else %}
+            <span class="text-faint">—</span>
+          {% endif %}
+        </td>
+        <td class="text-muted" style="font-size: 12px;">{{ item.products or '—' }}</td>
+        <td class="cell-num">{{ item.effort or '' }}</td>
+        <td class="cell-num">{{ item.value or '' }}</td>
+        <td class="cell-num">
+          {% set s = priority_score(item) %}
+          {% if s is not none %}
+            <span class="{% if s > 0 %}score-pos{% elif s < 0 %}score-neg{% else %}score-zero{% endif %}">
+              {% if s > 0 %}+{% endif %}{{ s }}
+            </span>
+          {% endif %}
+        </td>
+        <td class="cell-rationale">{{ item.rationale }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+
+{% block content %}
+<div class="signin-page">
+  <div class="signin-card">
+    <h1 class="signin-title">Sign in to edit</h1>
+    <p class="signin-blurb">
+      Viewing is open to anyone — no sign-in needed. Sign in to make changes
+      (add items, edit, reorder, delete).
+    </p>
+    <form method="post" class="signin-form">
+      {# Carry next-URL through so we can return them to where they came from. #}
+      <input type="hidden" name="next" value="{{ next_url or '' }}">
+      <label class="field-label" for="password-input">Editor password</label>
+      <input type="password" name="password" id="password-input"
+             class="text-input" autocomplete="current-password"
+             autofocus required>
+      <button type="submit" class="btn btn-primary signin-submit">Sign in</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
