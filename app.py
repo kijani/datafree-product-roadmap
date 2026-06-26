@@ -65,6 +65,8 @@ if EDITOR_PASSWORD == "CHANGE_ME_BEFORE_STARTING" or SECRET_KEY == "CHANGE_ME_BE
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
+# Allow serving under a sub-path (e.g. /roadmap).
+app.config["APPLICATION_ROOT"] = os.environ.get("APPLICATION_ROOT", "")
 # Sessions persist 30 days. The cookie is signed with SECRET_KEY so it
 # survives browser restarts. Logging out clears it explicitly.
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)

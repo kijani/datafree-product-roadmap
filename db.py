@@ -3,11 +3,12 @@
 SQLite schema and connection helpers. Keep this thin — business logic
 lives in the views.
 """
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "roadmap.db"
+DB_PATH = Path(os.environ.get("ROADMAP_DB_PATH", Path(__file__).parent / "roadmap.db"))
 
 
 SCHEMA = """
